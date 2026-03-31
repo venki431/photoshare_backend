@@ -82,11 +82,14 @@ CREATE TABLE IF NOT EXISTS photos (
   width          INTEGER,
   height         INTEGER,
   size           INTEGER,
-  taken_at       TIMESTAMPTZ,
-  created_at     TIMESTAMPTZ NOT NULL DEFAULT now()
+  taken_at            TIMESTAMPTZ,
+  selected_by_client  BOOLEAN NOT NULL DEFAULT false,
+  created_at          TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE INDEX IF NOT EXISTS idx_photos_project ON photos(project_id);
+CREATE INDEX IF NOT EXISTS idx_photos_selected ON photos(project_id, selected_by_client)
+  WHERE selected_by_client = true;
 
 -- ─── Selections ───────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS selections (
@@ -97,18 +100,6 @@ CREATE TABLE IF NOT EXISTS selections (
   submitted_at TIMESTAMPTZ,
   created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
 );
-
--- ─── Selected photos (per selection) ─────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS selected_photos (
-  id           TEXT PRIMARY KEY,
-  selection_id TEXT NOT NULL REFERENCES selections(id) ON DELETE CASCADE,
-  photo_id     TEXT NOT NULL REFERENCES photos(id) ON DELETE CASCADE,
-  comment      TEXT NOT NULL DEFAULT '',
-  created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
-  UNIQUE(selection_id, photo_id)
-);
-
-CREATE INDEX IF NOT EXISTS idx_selected_photos_sel ON selected_photos(selection_id);
 
 -- ─── RPC functions for atomic counter updates ────────────────────────────────
 

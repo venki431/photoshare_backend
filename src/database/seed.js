@@ -96,13 +96,13 @@ async function seed() {
     [selId, 'share_jkl012', 'proj_demo_4']
   )
 
+  // Mark some photos as selected by client
   const selectedPhotoIds = ['photo_proj_demo_4_1', 'photo_proj_demo_4_3', 'photo_proj_demo_4_7']
-  for (const photoId of selectedPhotoIds) {
-    await query(
-      'INSERT INTO selected_photos (id, selection_id, photo_id, comment) VALUES ($1, $2, $3, $4)',
-      [uuid(), selId, photoId, photoId === 'photo_proj_demo_4_3' ? 'Please brighten this one' : '']
-    )
-  }
+  const placeholders = selectedPhotoIds.map((_, i) => `$${i + 1}`).join(', ')
+  await query(
+    `UPDATE photos SET selected_by_client = true WHERE id IN (${placeholders})`,
+    selectedPhotoIds
+  )
 
   console.log('[SEED] Demo data inserted successfully.')
   console.log(`       Login email: ${DEMO_USER.email}`)

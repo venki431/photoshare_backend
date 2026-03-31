@@ -3,7 +3,6 @@
  *
  * GET  /selections/:shareId         — load current selection state
  * POST /selections/:shareId/toggle  — toggle one photo in/out
- * POST /selections/:shareId/comment — set/clear a comment on a photo
  * POST /selections/:shareId/submit  — finalise the selection
  */
 
@@ -27,18 +26,6 @@ export async function togglePhoto(req, res) {
   }
 
   return R.success(res, result.data, result.message)
-}
-
-export async function setComment(req, res) {
-  const { photoId, comment } = req.body
-  const result = await selectionService.setComment(req.params.shareId, photoId, comment)
-
-  if (result.error) {
-    if (result.status === 404) return R.notFound(res, result.error)
-    return R.badRequest(res, result.error)
-  }
-
-  return R.success(res, result.data, 'Comment saved')
 }
 
 export async function submitSelection(req, res) {

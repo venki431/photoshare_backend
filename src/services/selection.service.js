@@ -20,17 +20,12 @@ async function ensureSelection(shareId) {
 }
 
 async function buildSelectionResponse(sel) {
-  const rows = await selectionRepo.findSelectedPhotos(sel.id)
-
-  const selectedIds = rows.map(r => r.photo_id)
-  const comments = {}
-  rows.forEach(r => { if (r.comment) comments[r.photo_id] = r.comment })
+  const selectedIds = await selectionRepo.findSelectedPhotoIds(sel.project_id)
 
   return {
     shareId:     sel.share_id,
     projectId:   sel.project_id,
     selectedIds,
-    comments,
     status:      sel.status,
     submittedAt: sel.submitted_at,
   }
@@ -60,50 +55,29 @@ export async function togglePhoto(shareId, photoId) {
   const photo = await selectionRepo.photoExistsInProject(photoId, sel.project_id)
   if (!photo) return { error: 'Photo not found in this gallery', status: 404 }
 
-  const existing = await selectionRepo.findSelectedPhoto(sel.id, photoId)
+  const isSelected = await selectionRepo.isPhotoSelected(photoId)
 
   let message
-  if (!existing) {
+  if (!isSelected) {
     // Adding photo — check limit
     const selectionLimit = await projectRepo.getSelectionLimit(sel.project_id)
-    const currentCount = await selectionRepo.countSelectedPhotos(sel.id)
+    const currentCount = await selectionRepo.countSelectedPhotos(sel.project_id)
 
     if (selectionLimit && currentCount >= selectionLimit) {
       return { error: `Selection limit of ${selectionLimit} photos reached`, status: 400 }
     }
 
-    await selectionRepo.addPhoto({ id: uuid(), selection_id: sel.id, photo_id: photoId })
+    await selectionRepo.selectPhoto(photoId)
     await projectRepo.incrementSelectedCount(sel.project_id)
     message = 'Photo added to selection'
   } else {
-    await selectionRepo.removePhoto(sel.id, photoId)
+    await selectionRepo.deselectPhoto(photoId)
     await projectRepo.decrementSelectedCount(sel.project_id)
     message = 'Photo removed from selection'
   }
 
-  const updatedIds = await selectionRepo.findSelectedPhotoIds(sel.id)
+  const updatedIds = await selectionRepo.findSelectedPhotoIds(sel.project_id)
   return { data: { selectedIds: updatedIds }, message }
-}
-
-export async function setComment(shareId, photoId, comment) {
-  if (!photoId) return { error: 'photoId is required', status: 400 }
-
-  const sel = await ensureSelection(shareId)
-  if (!sel) return { error: 'Gallery not found', status: 404 }
-  if (sel.status === 'submitted') {
-    return { error: 'This gallery has already been submitted', status: 400 }
-  }
-
-  const entry = await selectionRepo.findSelectedPhoto(sel.id, photoId)
-  if (!entry) return { error: 'Cannot comment on a photo that is not selected', status: 400 }
-
-  await selectionRepo.updateComment(sel.id, photoId, comment?.trim() || '')
-
-  const rows = await selectionRepo.findSelectedPhotos(sel.id)
-  const comments = {}
-  rows.forEach(r => { if (r.comment) comments[r.photo_id] = r.comment })
-
-  return { data: { comments } }
 }
 
 export async function submitSelection(shareId) {
@@ -113,7 +87,7 @@ export async function submitSelection(shareId) {
     return { error: 'This gallery has already been submitted', status: 400 }
   }
 
-  const count = await selectionRepo.countSelectedPhotos(sel.id)
+  const count = await selectionRepo.countSelectedPhotos(sel.project_id)
   if (count === 0) {
     return { error: 'Please select at least one photo before submitting', status: 400 }
   }

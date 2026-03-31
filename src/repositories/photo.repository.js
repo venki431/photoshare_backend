@@ -70,26 +70,24 @@ export async function deleteByIds(ids) {
   await query(`DELETE FROM photos WHERE id IN (${placeholders})`, ids)
 }
 
-export async function findSelectedByProjectId(selectionId) {
+export async function findSelectedByProjectId(projectId) {
   const { rows } = await query(
     `SELECT
-       sp.photo_id,
-       sp.comment,
-       p.id,
-       p.original_file_name,
-       p.compressed_file_name,
-       p.storage_url,
-       p.thumbnail_url,
-       p.file_size_original,
-       p.file_size_compressed,
-       p.mime_type,
-       p.width,
-       p.height,
-       p.created_at
-     FROM selected_photos sp
-     JOIN photos p ON p.id = sp.photo_id
-     WHERE sp.selection_id = $1`,
-    [selectionId]
+       id,
+       original_file_name,
+       compressed_file_name,
+       storage_url,
+       thumbnail_url,
+       file_size_original,
+       file_size_compressed,
+       mime_type,
+       width,
+       height,
+       created_at
+     FROM photos
+     WHERE project_id = $1 AND selected_by_client = true
+     ORDER BY created_at ASC`,
+    [projectId]
   )
   return rows
 }

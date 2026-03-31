@@ -31,31 +31,3 @@ WHERE original_file_name IS NULL;
 CREATE INDEX IF NOT EXISTS idx_photos_project_status
   ON photos (project_id, upload_status);
 
--- ============================================================================
--- View: selected_photos_with_originals
--- Photographer can query this to get selected images with original file names.
--- ============================================================================
-
-CREATE OR REPLACE VIEW selected_photos_with_originals AS
-SELECT
-  sp.id           AS selection_entry_id,
-  sp.selection_id,
-  sp.photo_id,
-  sp.comment,
-  p.original_file_name,
-  p.compressed_file_name,
-  p.storage_url,
-  p.thumbnail_url,
-  p.file_size_original,
-  p.file_size_compressed,
-  p.mime_type,
-  p.width,
-  p.height,
-  p.created_at    AS uploaded_at,
-  s.share_id,
-  s.project_id,
-  s.status        AS selection_status,
-  s.submitted_at
-FROM selected_photos sp
-JOIN photos p ON p.id = sp.photo_id
-JOIN selections s ON s.id = sp.selection_id;

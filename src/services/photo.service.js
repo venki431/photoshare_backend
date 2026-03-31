@@ -5,8 +5,6 @@
 import { v4 as uuid } from 'uuid'
 import * as photoRepo from '../repositories/photo.repository.js'
 import * as projectRepo from '../repositories/project.repository.js'
-import * as selectionRepo from '../repositories/selection.repository.js'
-
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function formatPhoto(row) {
@@ -28,6 +26,7 @@ function formatPhoto(row) {
     uploadStatus:       row.upload_status || 'uploaded',
     takenAt:            row.taken_at,
     createdAt:          row.created_at,
+    selectedByClient:   row.selected_by_client
   }
 }
 
@@ -140,16 +139,10 @@ export async function getSelectedPhotos(projectId, userId) {
   const project = await projectRepo.findById(projectId, userId)
   if (!project) return { error: 'Project not found', status: 404 }
 
-  const sel = await selectionRepo.findByProjectId(projectId)
-  if (!sel) {
-    return { data: { photos: [], selection: null } }
-  }
-
-  const rows = await photoRepo.findSelectedByProjectId(sel.id)
+  const rows = await photoRepo.findSelectedByProjectId(projectId)
 
   const photos = rows.map(r => ({
-    photoId:            r.photo_id,
-    comment:            r.comment || '',
+    photoId:            r.id,
     originalFileName:   r.original_file_name,
     compressedFileName: r.compressed_file_name,
     storageUrl:         r.storage_url,
@@ -165,11 +158,7 @@ export async function getSelectedPhotos(projectId, userId) {
   return {
     data: {
       photos,
-      selection: {
-        status:        sel.status,
-        submittedAt:   sel.submitted_at,
-        totalSelected: photos.length,
-      },
+      totalSelected: photos.length,
     },
   }
 }

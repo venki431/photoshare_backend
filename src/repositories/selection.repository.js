@@ -1,5 +1,5 @@
 /**
- * Selection Repository — all database queries for selections & selected_photos tables.
+ * Selection Repository — all database queries for selections & photo selection via flag.
  */
 
 import { query } from '../config/db.js'
@@ -39,59 +39,52 @@ export async function updateStatus(id, status, submittedAt) {
   )
 }
 
-// ─── Selected Photos ─────────────────────────────────────────────────────────
+// ─── Photo Selection (via selected_by_client flag) ──────────────────────────
 
-export async function findSelectedPhotos(selectionId) {
+export async function findSelectedPhotos(projectId) {
   const { rows } = await query(
-    'SELECT photo_id, comment FROM selected_photos WHERE selection_id = $1',
-    [selectionId]
+    'SELECT id AS photo_id FROM photos WHERE project_id = $1 AND selected_by_client = true',
+    [projectId]
   )
   return rows
 }
 
-export async function findSelectedPhoto(selectionId, photoId) {
+export async function isPhotoSelected(photoId) {
   const { rows } = await query(
-    'SELECT id FROM selected_photos WHERE selection_id = $1 AND photo_id = $2',
-    [selectionId, photoId]
+    'SELECT selected_by_client FROM photos WHERE id = $1',
+    [photoId]
   )
-  return rows[0] || null
+  return rows[0]?.selected_by_client || false
 }
 
-export async function countSelectedPhotos(selectionId) {
+export async function countSelectedPhotos(projectId) {
   const { rows } = await query(
-    'SELECT COUNT(*)::int AS total FROM selected_photos WHERE selection_id = $1',
-    [selectionId]
+    'SELECT COUNT(*)::int AS total FROM photos WHERE project_id = $1 AND selected_by_client = true',
+    [projectId]
   )
   return rows[0].total
 }
 
-export async function addPhoto({ id, selection_id, photo_id }) {
+export async function selectPhoto(photoId) {
   await query(
-    'INSERT INTO selected_photos (id, selection_id, photo_id) VALUES ($1, $2, $3)',
-    [id, selection_id, photo_id]
+    'UPDATE photos SET selected_by_client = true WHERE id = $1',
+    [photoId]
   )
 }
 
-export async function removePhoto(selectionId, photoId) {
+export async function deselectPhoto(photoId) {
   await query(
-    'DELETE FROM selected_photos WHERE selection_id = $1 AND photo_id = $2',
-    [selectionId, photoId]
+    'UPDATE photos SET selected_by_client = false WHERE id = $1',
+    [photoId]
   )
 }
 
-export async function updateComment(selectionId, photoId, comment) {
-  await query(
-    'UPDATE selected_photos SET comment = $3 WHERE selection_id = $1 AND photo_id = $2',
-    [selectionId, photoId, comment]
-  )
-}
-
-export async function findSelectedPhotoIds(selectionId) {
+export async function findSelectedPhotoIds(projectId) {
   const { rows } = await query(
-    'SELECT photo_id FROM selected_photos WHERE selection_id = $1',
-    [selectionId]
+    'SELECT id FROM photos WHERE project_id = $1 AND selected_by_client = true',
+    [projectId]
   )
-  return rows.map(r => r.photo_id)
+  return rows.map(r => r.id)
 }
 
 export async function photoExistsInProject(photoId, projectId) {
