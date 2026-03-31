@@ -21,22 +21,22 @@ function generateShareId() {
 
 function formatProject(row) {
   return {
-    id:             row.id,
-    name:           row.name,
-    eventType:      row.event_type,
-    status:         row.status,
-    imageCount:     row.image_count,
-    selectedCount:  row.selected_count,
-    shareId:        row.share_id,
-    password:       row.password,
-    coverUrl:       row.cover_url,
-    clientName:     row.client_name,
-    clientEmail:    row.client_email,
-    clientMobile:   row.client_mobile,
-    notes:          row.notes,
-    allowComments:  Boolean(row.allow_comments),
+    id: row.id,
+    name: row.name,
+    eventType: row.event_type,
+    status: row.status,
+    imageCount: row.image_count,
+    selectedCount: row.selected_count,
+    shareId: row.share_id,
+    password: row.password,
+    coverImage: row.cover_image,
+    clientName: row.client_name,
+    clientEmail: row.client_email,
+    clientMobile: row.client_mobile,
+    notes: row.notes,
+    allowComments: Boolean(row.allow_comments),
     selectionLimit: row.selection_limit,
-    createdAt:      row.created_at,
+    createdAt: row.created_at,
   }
 }
 
@@ -45,9 +45,9 @@ function formatProject(row) {
 export async function listProjects(req, res) {
   const { page = 1, perPage = 10, status, search } = req.query
 
-  const pageNum    = Math.max(1, parseInt(page, 10))
+  const pageNum = Math.max(1, parseInt(page, 10))
   const perPageNum = Math.min(100, Math.max(1, parseInt(perPage, 10)))
-  const offset     = (pageNum - 1) * perPageNum
+  const offset = (pageNum - 1) * perPageNum
 
   let countQuery = supabase
     .from('projects')
@@ -61,13 +61,13 @@ export async function listProjects(req, res) {
 
   if (status && status !== 'all') {
     countQuery = countQuery.eq('status', status)
-    dataQuery  = dataQuery.eq('status', status)
+    dataQuery = dataQuery.eq('status', status)
   }
 
   if (search) {
     const filter = `name.ilike.%${search}%,event_type.ilike.%${search}%`
     countQuery = countQuery.or(filter)
-    dataQuery  = dataQuery.or(filter)
+    dataQuery = dataQuery.or(filter)
   }
 
   const { count: total, error: countErr } = await countQuery
@@ -86,8 +86,8 @@ export async function listProjects(req, res) {
     {
       meta: {
         total,
-        page:       pageNum,
-        perPage:    perPageNum,
+        page: pageNum,
+        perPage: perPageNum,
         totalPages: Math.ceil(total / perPageNum) || 1,
       },
     }
@@ -115,7 +115,7 @@ export async function getProjectByShareId(req, res) {
 
   if (error || !row) return R.notFound(res, 'Gallery link is invalid or has expired')
 
-  const project   = formatProject(row)
+  const project = formatProject(row)
   project.hasPassword = Boolean(row.password)
   delete project.password
 
@@ -123,28 +123,29 @@ export async function getProjectByShareId(req, res) {
 }
 
 export async function createProject(req, res) {
-  const { name, eventType, password, clientName, clientEmail, clientMobile, notes, allowComments, selectionLimit } = req.body
+  const { name, eventType, password, coverImage, clientName, clientEmail, clientMobile, notes, allowComments, selectionLimit } = req.body
 
-  if (!name?.trim())  return R.badRequest(res, 'Project name is required')
-  if (!eventType)     return R.badRequest(res, 'Event type is required')
+  if (!name?.trim()) return R.badRequest(res, 'Project name is required')
+  if (!eventType) return R.badRequest(res, 'Event type is required')
 
-  const id      = uuid()
+  const id = uuid()
   const shareId = generateShareId()
 
   const { data: project, error } = await supabase
     .from('projects')
     .insert({
       id,
-      user_id:         req.user.id,
-      name:            name.trim(),
-      event_type:      eventType,
-      share_id:        shareId,
-      password:        password || '',
-      client_name:     clientName || '',
-      client_email:    clientEmail || '',
-      client_mobile:   clientMobile || '',
-      notes:           notes || '',
-      allow_comments:  allowComments !== false,
+      user_id: req.user.id,
+      name: name.trim(),
+      event_type: eventType,
+      share_id: shareId,
+      password: password || '',
+      client_name: clientName || '',
+      client_email: clientEmail || '',
+      client_mobile: clientMobile || '',
+      cover_image: coverImage || '',
+      notes: notes || '',
+      allow_comments: allowComments !== false,
       selection_limit: selectionLimit || null,
     })
     .select('*')
@@ -165,16 +166,16 @@ export async function updateProject(req, res) {
   if (fetchErr || !row) return R.notFound(res, 'Project not found')
 
   const fieldMap = {
-    name:           'name',
-    eventType:      'event_type',
-    status:         'status',
-    password:       'password',
-    clientName:     'client_name',
-    clientEmail:    'client_email',
-    clientMobile:   'client_mobile',
-    notes:          'notes',
-    coverUrl:       'cover_url',
-    allowComments:  'allow_comments',
+    name: 'name',
+    eventType: 'event_type',
+    status: 'status',
+    password: 'password',
+    clientName: 'client_name',
+    clientEmail: 'client_email',
+    clientMobile: 'client_mobile',
+    notes: 'notes',
+    coverImage: 'coverimage',
+    allowComments: 'allow_comments',
     selectionLimit: 'selection_limit',
   }
 

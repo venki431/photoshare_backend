@@ -41,7 +41,7 @@ function formatPhoto(row) {
 
 export async function listPhotos(req, res) {
   const { projectId } = req.params
-  const { page = 1, perPage = 24 } = req.query
+  const { page = 1, perPage = 500 } = req.query
 
   const pageNum    = Math.max(1, parseInt(page, 10))
   const perPageNum = Math.min(200, Math.max(1, parseInt(perPage, 10)))
