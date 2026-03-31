@@ -1,5 +1,5 @@
 -- Migration 002: Add profile fields to users table for signup/onboarding flow
--- Run this in Supabase SQL Editor against an existing database.
+-- Run this against an existing database.
 
 -- Add new columns
 ALTER TABLE users ADD COLUMN IF NOT EXISTS date_of_birth DATE;

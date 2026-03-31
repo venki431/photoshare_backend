@@ -1,7 +1,7 @@
 {
   "name": "photoshare-backend",
-  "version": "2.0.0",
-  "description": "PhotoShare REST API — Supabase + Cloudinary",
+  "version": "3.0.0",
+  "description": "PhotoShare REST API — PostgreSQL + Cloudinary",
   "type": "module",
   "main": "server.js",
   "scripts": {
@@ -10,7 +10,6 @@
     "seed": "node database/seed.js"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.45.0",
     "cloudinary": "^2.5.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
@@ -18,6 +17,7 @@
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.1.1",
     "nodemailer": "^8.0.4",
+    "pg": "^8.20.0",
     "uuid": "^9.0.1"
   }
 }

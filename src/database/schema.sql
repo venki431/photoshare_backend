@@ -1,5 +1,5 @@
--- PhotoShare Database Schema — PostgreSQL (Supabase)
--- Run this in the Supabase SQL Editor to create tables.
+-- PhotoShare Database Schema — PostgreSQL
+-- Run this against your PostgreSQL database to create tables.
 
 -- ─── Users ────────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS users (

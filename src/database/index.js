@@ -1,5 +1,6 @@
 /**
- * Database layer — re-exports the Supabase client.
+ * Database layer — re-exports the pg pool utilities.
  */
 
-export { supabase } from '../config/supabase.js'
+export { query, getClient, transaction, closePool } from '../config/db.js'
+export { default as pool } from '../config/db.js'

@@ -9,7 +9,8 @@ import 'dotenv/config'
 import express from 'express'
 import cors from 'cors'
 import { errorHandler, asyncHandler } from './src/middleware/errorHandler.js'
-import { supabase } from './src/config/supabase.js'
+import { closePool } from './src/config/db.js'
+import * as projectService from './src/services/project.service.js'
 import * as R from './src/utils/response.js'
 
 import authRoutes from './src/routes/auth.routes.js'
@@ -18,11 +19,11 @@ import photoRoutes from './src/routes/photo.routes.js'
 import selectionRoutes from './src/routes/selection.routes.js'
 import uploadRoutes from './src/routes/upload.routes.js'
 
-// ─── App ──────────────────────────────────────────────────────────────────────
+// ─── App ─────────────────────────────────────────────────────────────────────
 const app  = express()
 const PORT = process.env.PORT || 3000
 
-// ─── Global middleware ────────────────────────────────────────────────────────
+// ─── Global middleware ───────────────────────────────────────────────────────
 app.use(cors({
   origin:      process.env.CORS_ORIGIN || 'http://localhost:5173',
   credentials: true,
@@ -31,34 +32,23 @@ app.use(cors({
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 
-// ─── Health check ─────────────────────────────────────────────────────────────
+// ─── Health check ────────────────────────────────────────────────────────────
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() })
 })
 
-// ─── API routes ───────────────────────────────────────────────────────────────
+// ─── API routes ──────────────────────────────────────────────────────────────
 app.use('/v1/auth',        authRoutes)
 app.use('/v1/projects',    projectRoutes)
 app.use('/v1',             photoRoutes)
 app.use('/v1/selections',  selectionRoutes)
 app.use('/api/upload',     uploadRoutes)
 
-// ─── Gallery share link (public) ──────────────────────────────────────────────
+// ─── Gallery share link (public) ─────────────────────────────────────────────
 app.get('/gallery/:share_id', asyncHandler(async (req, res) => {
-  const { data: project, error } = await supabase
-    .from('projects')
-    .select(`
-      *,
-      photos (*)
-    `)
-    .eq('share_id', req.params.share_id)
-    .single()
-
-  if (error || !project) return R.notFound(res, 'Gallery not found')
-
-  delete project.password
-
-  return R.success(res, project, 'Gallery loaded successfully')
+  const result = await projectService.getGallery(req.params.share_id)
+  if (result.error) return R.notFound(res, result.error)
+  return R.success(res, result.data, 'Gallery loaded successfully')
 }))
 
 // ─── 404 handler ─────────────────────────────────────────────────────────────
@@ -66,20 +56,24 @@ app.use((_req, res) => {
   res.status(404).json({ success: false, data: null, message: 'Route not found' })
 })
 
-// ─── Global error handler ─────────────────────────────────────────────────────
+// ─── Global error handler ────────────────────────────────────────────────────
 app.use(errorHandler)
 
-// ─── Start ────────────────────────────────────────────────────────────────────
+// ─── Start ───────────────────────────────────────────────────────────────────
 const server = app.listen(PORT, () => {
   console.log(`\n  PhotoShare API running`)
   console.log(`  → http://localhost:${PORT}`)
   console.log(`  → Health: http://localhost:${PORT}/health\n`)
 })
 
-// ─── Graceful shutdown ────────────────────────────────────────────────────────
-function shutdown() {
+// ─── Graceful shutdown ───────────────────────────────────────────────────────
+async function shutdown() {
   console.log('\n[SERVER] Shutting down gracefully...')
-  server.close(() => process.exit(0))
+  server.close(async () => {
+    await closePool()
+    console.log('[SERVER] Database pool closed')
+    process.exit(0)
+  })
 }
 
 process.on('SIGTERM', shutdown)

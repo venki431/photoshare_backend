@@ -8,72 +8,41 @@
 import crypto from 'crypto'
 import nodemailer from 'nodemailer'
 import { v4 as uuid } from 'uuid'
-import { supabase } from '../config/supabase.js'
+import * as otpRepo from '../repositories/otp.repository.js'
 
 const OTP_EXPIRES_MINUTES = parseInt(process.env.OTP_EXPIRES_MINUTES || '10', 10)
 const SMTP_ENABLED        = process.env.SMTP_ENABLED === 'true'
 
-// ─── Generation ───────────────────────────────────────────────────────────────
+// ─── Generation ──────────────────────────────────────────────────────────────
 
 export function generateCode() {
   return String(crypto.randomInt(100000, 999999))
 }
 
-// ─── Storage ──────────────────────────────────────────────────────────────────
+// ─── Storage ─────────────────────────────────────────────────────────────────
 
 export async function saveOtp(email, code) {
-  const expiresAt = new Date(Date.now() + OTP_EXPIRES_MINUTES * 60 * 1000).toISOString()
-
   // Invalidate any previous unused codes for this email
-  await supabase
-    .from('otp_codes')
-    .update({ used: true })
-    .eq('email', email)
-    .eq('used', false)
+  await otpRepo.invalidatePreviousCodes(email)
 
-  const { error } = await supabase
-    .from('otp_codes')
-    .insert({ id: uuid(), email, code, expires_at: expiresAt })
-
-  if (error) throw error
+  await otpRepo.create({ id: uuid(), email, code, expiresMinutes: OTP_EXPIRES_MINUTES })
 }
 
 /**
  * Returns true if code is valid, throws descriptive Error otherwise.
  */
 export async function verifyOtp(email, code) {
-  const { data: row, error } = await supabase
-    .from('otp_codes')
-    .select('*')
-    .eq('email', email)
-    .eq('code', code)
-    .eq('used', false)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .single()
+  const row = await otpRepo.findValidCode(email, code)
 
-  if (error || !row) throw new Error('Invalid verification code')
-
-  // Supabase may return TIMESTAMPTZ without a trailing 'Z' — force UTC parse
-  const expiresStr = row.expires_at.endsWith('Z') || row.expires_at.includes('+')
-    ? row.expires_at
-    : row.expires_at + 'Z'
-  if (new Date(expiresStr) < new Date()) {
-    throw new Error('Verification code has expired. Please request a new one.')
-  }
+  if (!row) throw new Error('Invalid or expired verification code. Please request a new one.')
 
   // Mark as used immediately so it can't be replayed
-  const { error: updateErr } = await supabase
-    .from('otp_codes')
-    .update({ used: true })
-    .eq('id', row.id)
-
-  if (updateErr) throw updateErr
+  await otpRepo.markUsed(row.id)
 
   return true
 }
 
-// ─── Email delivery ───────────────────────────────────────────────────────────
+// ─── Email delivery ──────────────────────────────────────────────────────────
 
 let _transporter = null
 

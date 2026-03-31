@@ -1,5 +1,5 @@
 /**
- * Database seeder — populates Supabase with demo data.
+ * Database seeder — populates the database with demo data.
  *
  * Run: npm run seed   (from the backend/ directory)
  *
@@ -7,7 +7,8 @@
  */
 
 import 'dotenv/config'
-import { supabase } from '../config/supabase.js'
+import { query } from '../config/db.js'
+import { closePool } from '../config/db.js'
 import { v4 as uuid } from 'uuid'
 
 const DEMO_USER = {
@@ -49,85 +50,68 @@ const DEMO_PROJECTS = [
 ]
 
 async function seed() {
-  const { data: existing } = await supabase
-    .from('users')
-    .select('id')
-    .eq('id', DEMO_USER.id)
-    .single()
+  const { rows: existing } = await query('SELECT id FROM users WHERE id = $1', [DEMO_USER.id])
 
-  if (existing) {
+  if (existing.length > 0) {
     console.log('[SEED] Demo data already exists — skipping.')
     return
   }
 
-  const { error: userErr } = await supabase
-    .from('users')
-    .insert(DEMO_USER)
+  await query(
+    'INSERT INTO users (id, email, name, role) VALUES ($1, $2, $3, $4)',
+    [DEMO_USER.id, DEMO_USER.email, DEMO_USER.name, DEMO_USER.role]
+  )
 
-  if (userErr) { console.error('[SEED] Failed to insert user:', userErr); return }
+  for (const p of DEMO_PROJECTS) {
+    await query(
+      `INSERT INTO projects (id, user_id, name, event_type, status, image_count, selected_count, share_id, password, cover_url, client_email, notes)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+      [p.id, DEMO_USER.id, p.name, p.eventType, p.status, p.imageCount, p.selectedCount, p.shareId, p.password || '', p.coverImage, p.clientEmail, p.notes]
+    )
+  }
 
-  const projectRows = DEMO_PROJECTS.map(p => ({
-    id:             p.id,
-    user_id:        DEMO_USER.id,
-    name:           p.name,
-    event_type:     p.eventType,
-    status:         p.status,
-    image_count:    p.imageCount,
-    selected_count: p.selectedCount,
-    share_id:       p.shareId,
-    password:       p.password || '',
-    cover_url:      p.coverImage,
-    client_email:   p.clientEmail,
-    notes:          p.notes,
-  }))
-
-  const { error: projErr } = await supabase.from('projects').insert(projectRows)
-  if (projErr) { console.error('[SEED] Failed to insert projects:', projErr); return }
-
-  const photoRows = []
   for (const p of DEMO_PROJECTS) {
     for (let i = 1; i <= 24; i++) {
       const seed = (DEMO_PROJECTS.indexOf(p) * 8) + i
-      photoRows.push({
-        id:         `photo_${p.id}_${i}`,
-        project_id: p.id,
-        filename:   `IMG_${String(seed).padStart(4, '0')}.jpg`,
-        url:        `https://picsum.photos/seed/ps${seed}/800/600`,
-        thumb_url:  `https://picsum.photos/seed/ps${seed}/400/300`,
-        width:      800 + (seed % 5) * 80,
-        height:     600 + (seed % 4) * 60,
-        size:       3_400_000 + seed * 11_000,
-      })
+      await query(
+        `INSERT INTO photos (id, project_id, filename, url, thumb_url, width, height, size)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [
+          `photo_${p.id}_${i}`,
+          p.id,
+          `IMG_${String(seed).padStart(4, '0')}.jpg`,
+          `https://picsum.photos/seed/ps${seed}/800/600`,
+          `https://picsum.photos/seed/ps${seed}/400/300`,
+          800 + (seed % 5) * 80,
+          600 + (seed % 4) * 60,
+          3_400_000 + seed * 11_000,
+        ]
+      )
     }
   }
 
-  const { error: photoErr } = await supabase.from('photos').insert(photoRows)
-  if (photoErr) { console.error('[SEED] Failed to insert photos:', photoErr); return }
-
   const selId = uuid()
-  const { error: selErr } = await supabase
-    .from('selections')
-    .insert({ id: selId, share_id: 'share_jkl012', project_id: 'proj_demo_4' })
-
-  if (selErr) { console.error('[SEED] Failed to insert selection:', selErr); return }
+  await query(
+    'INSERT INTO selections (id, share_id, project_id) VALUES ($1, $2, $3)',
+    [selId, 'share_jkl012', 'proj_demo_4']
+  )
 
   const selectedPhotoIds = ['photo_proj_demo_4_1', 'photo_proj_demo_4_3', 'photo_proj_demo_4_7']
-  const selPhotoRows = selectedPhotoIds.map(photoId => ({
-    id:           uuid(),
-    selection_id: selId,
-    photo_id:     photoId,
-    comment:      photoId === 'photo_proj_demo_4_3' ? 'Please brighten this one' : '',
-  }))
-
-  const { error: selPhotoErr } = await supabase.from('selected_photos').insert(selPhotoRows)
-  if (selPhotoErr) { console.error('[SEED] Failed to insert selected photos:', selPhotoErr); return }
+  for (const photoId of selectedPhotoIds) {
+    await query(
+      'INSERT INTO selected_photos (id, selection_id, photo_id, comment) VALUES ($1, $2, $3, $4)',
+      [uuid(), selId, photoId, photoId === 'photo_proj_demo_4_3' ? 'Please brighten this one' : '']
+    )
+  }
 
   console.log('[SEED] Demo data inserted successfully.')
   console.log(`       Login email: ${DEMO_USER.email}`)
   console.log('       Any 6-digit OTP code will work in dev mode (check console output).')
 }
 
-seed().catch(err => {
-  console.error('[SEED] Fatal error:', err)
-  process.exit(1)
-})
+seed()
+  .catch(err => {
+    console.error('[SEED] Fatal error:', err)
+    process.exit(1)
+  })
+  .finally(() => closePool())
