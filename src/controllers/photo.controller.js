@@ -74,8 +74,8 @@ export async function getSelectedPhotos(req, res) {
 
   if (result.error) return R.notFound(res, result.error)
 
-  return R.success(res, result.data, result.data.selection
+  return R.success(res, result.data, result.data.totalSelected > 0
     ? 'Selected photos fetched successfully'
-    : 'No selection found for this project'
+    : 'No selected photos found for this project'
   )
 }

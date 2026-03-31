@@ -55,11 +55,6 @@ export async function findById(id, userId) {
   return rows[0] || null
 }
 
-export async function findByIdOnly(id) {
-  const { rows } = await query('SELECT * FROM projects WHERE id = $1', [id])
-  return rows[0] || null
-}
-
 export async function findByShareId(shareId) {
   const { rows } = await query('SELECT * FROM projects WHERE share_id = $1', [shareId])
   return rows[0] || null

@@ -14,14 +14,6 @@ export async function findByShareId(shareId) {
   return rows[0] || null
 }
 
-export async function findByProjectId(projectId) {
-  const { rows } = await query(
-    'SELECT id, status, submitted_at FROM selections WHERE project_id = $1',
-    [projectId]
-  )
-  return rows[0] || null
-}
-
 export async function create({ id, share_id, project_id }) {
   const { rows } = await query(
     `INSERT INTO selections (id, share_id, project_id)
@@ -40,14 +32,6 @@ export async function updateStatus(id, status, submittedAt) {
 }
 
 // ─── Photo Selection (via selected_by_client flag) ──────────────────────────
-
-export async function findSelectedPhotos(projectId) {
-  const { rows } = await query(
-    'SELECT id AS photo_id FROM photos WHERE project_id = $1 AND selected_by_client = true',
-    [projectId]
-  )
-  return rows
-}
 
 export async function isPhotoSelected(photoId) {
   const { rows } = await query(
