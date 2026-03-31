@@ -3,13 +3,36 @@
 
 -- ─── Users ────────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS users (
-  id          TEXT PRIMARY KEY,
-  email       TEXT UNIQUE NOT NULL,
-  name        TEXT NOT NULL DEFAULT 'Photographer',
-  role        TEXT NOT NULL DEFAULT 'photographer',
-  avatar_url  TEXT,
-  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+  id                    TEXT PRIMARY KEY,
+  email                 TEXT UNIQUE NOT NULL,
+  name                  TEXT NOT NULL DEFAULT 'Photographer',
+  role                  TEXT NOT NULL DEFAULT 'photographer',
+  date_of_birth         DATE,
+  phone_number          TEXT,
+  address               TEXT,
+  avatar_url            TEXT,
+  is_verified           BOOLEAN NOT NULL DEFAULT false,
+  onboarding_completed  BOOLEAN NOT NULL DEFAULT false,
+  created_at            TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at            TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT users_phone_number_key UNIQUE (phone_number)
 );
+
+CREATE INDEX IF NOT EXISTS idx_users_phone ON users(phone_number);
+
+-- Auto-update updated_at on row changes
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = now();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_users_updated_at
+  BEFORE UPDATE ON users
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
 
 -- ─── OTP codes (short-lived, single-use) ─────────────────────────────────────
 CREATE TABLE IF NOT EXISTS otp_codes (
