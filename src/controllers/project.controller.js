@@ -10,6 +10,7 @@
  */
 
 import * as projectService from '../services/project.service.js'
+import { deleteImages } from '../config/cloudinary.js'
 import * as R from '../utils/response.js'
 
 // ─── Handlers ────────────────────────────────────────────────────────────────
@@ -50,7 +51,7 @@ export async function updateProject(req, res) {
 }
 
 export async function deleteProject(req, res) {
-  const result = await projectService.deleteProject(req.params.id, req.user.id)
+  const result = await projectService.deleteProject(req.params.id, req.user.id, deleteImages)
   if (result.error) return R.notFound(res, result.error)
   return R.success(res, null, 'Project deleted successfully')
 }

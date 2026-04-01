@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import multer from 'multer'
-import { listPhotos, uploadPhoto, deletePhoto, bulkDeletePhotos, getSelectedPhotos } from '../controllers/photo.controller.js'
+import { listPhotos, uploadPhoto, deletePhoto, bulkDeletePhotos, getSelectedPhotos, downloadSelectedNames } from '../controllers/photo.controller.js'
 import { requireAuth } from '../middleware/auth.js'
 import { asyncHandler } from '../middleware/errorHandler.js'
 
@@ -18,6 +18,7 @@ const upload = multer({
 
 router.get( '/projects/:projectId/photos',          requireAuth, asyncHandler(listPhotos))
 router.get( '/projects/:projectId/photos/selected',  requireAuth, asyncHandler(getSelectedPhotos))
+router.get( '/projects/:projectId/photos/selected/download', requireAuth, asyncHandler(downloadSelectedNames))
 router.post('/projects/:projectId/photos',           requireAuth, upload.single('photo'), asyncHandler(uploadPhoto))
 
 router.delete('/photos/:id',        requireAuth, asyncHandler(deletePhoto))

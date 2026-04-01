@@ -32,7 +32,7 @@ function formatPhoto(row) {
 
 // ─── Service methods ─────────────────────────────────────────────────────────
 
-export async function listPhotos(projectId, { page = 1, perPage = 500 }) {
+export async function listPhotos(projectId, { page = 1, perPage = 10 }) {
   const pageNum    = Math.max(1, parseInt(page, 10))
   const perPageNum = Math.min(200, Math.max(1, parseInt(perPage, 10)))
   const offset     = (pageNum - 1) * perPageNum
@@ -133,6 +133,16 @@ export async function bulkDeletePhotos(ids, userId, deleteImagesFn) {
   }
 
   return { data: { deletedCount: photos.length } }
+}
+
+export async function getSelectedPhotoNames(projectId, userId) {
+  const project = await projectRepo.findById(projectId, userId)
+  if (!project) return { error: 'Project not found', status: 404 }
+
+  const rows = await photoRepo.findSelectedByProjectId(projectId)
+  const names = rows.map(r => r.original_file_name).filter(Boolean)
+
+  return { data: names }
 }
 
 export async function getSelectedPhotos(projectId, userId) {

@@ -69,6 +69,17 @@ export async function bulkDeletePhotos(req, res) {
   return R.success(res, result.data, `${result.data.deletedCount} photo(s) deleted`)
 }
 
+export async function downloadSelectedNames(req, res) {
+  const result = await photoService.getSelectedPhotoNames(req.params.projectId, req.user.id)
+
+  if (result.error) return R.notFound(res, result.error)
+
+  const content = result.data.join('\n')
+  res.setHeader('Content-Type', 'text/plain')
+  res.setHeader('Content-Disposition', 'attachment; filename="selected_images.txt"')
+  return res.send(content)
+}
+
 export async function getSelectedPhotos(req, res) {
   const result = await photoService.getSelectedPhotos(req.params.projectId, req.user.id)
 

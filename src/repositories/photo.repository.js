@@ -70,6 +70,18 @@ export async function deleteByIds(ids) {
   await query(`DELETE FROM photos WHERE id IN (${placeholders})`, ids)
 }
 
+export async function findCloudinaryIdsByProjectId(projectId) {
+  const { rows } = await query(
+    'SELECT cloudinary_id FROM photos WHERE project_id = $1 AND cloudinary_id IS NOT NULL',
+    [projectId]
+  )
+  return rows.map(r => r.cloudinary_id).filter(Boolean)
+}
+
+export async function deleteByProjectId(projectId) {
+  await query('DELETE FROM photos WHERE project_id = $1', [projectId])
+}
+
 export async function findSelectedByProjectId(projectId) {
   const { rows } = await query(
     `SELECT

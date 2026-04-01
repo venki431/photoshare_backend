@@ -4,6 +4,7 @@
 
 import { v4 as uuid } from 'uuid'
 import * as projectRepo from '../repositories/project.repository.js'
+import * as photoRepo from '../repositories/photo.repository.js'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -132,10 +133,18 @@ export async function updateProject(id, userId, body) {
   return { data: formatProject(updated) }
 }
 
-export async function deleteProject(id, userId) {
+export async function deleteProject(id, userId, deleteImagesFn) {
   const existing = await projectRepo.findById(id, userId)
   if (!existing) return { error: 'Project not found', status: 404 }
 
+  // Delete photos from Cloudinary
+  const cloudinaryIds = await photoRepo.findCloudinaryIdsByProjectId(id)
+  if (cloudinaryIds.length > 0 && deleteImagesFn) {
+    await deleteImagesFn(cloudinaryIds)
+  }
+
+  // Delete photos from DB, then the project
+  await photoRepo.deleteByProjectId(id)
   await projectRepo.deleteById(id)
   return { data: null }
 }
