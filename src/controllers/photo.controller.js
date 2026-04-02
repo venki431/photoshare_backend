@@ -69,6 +69,16 @@ export async function bulkDeletePhotos(req, res) {
   return R.success(res, result.data, `${result.data.deletedCount} photo(s) deleted`)
 }
 
+export async function listPhotosByShareId(req, res) {
+  const { shareId } = req.params
+  const { page, perPage } = req.query
+
+  const result = await photoService.listPhotosByShareId(shareId, { page, perPage })
+  if (result.error) return R.notFound(res, result.error)
+
+  return R.success(res, result.data, 'Photos fetched successfully', { meta: result.meta })
+}
+
 export async function downloadSelectedNames(req, res) {
   const result = await photoService.getSelectedPhotoNames(req.params.projectId, req.user.id)
 

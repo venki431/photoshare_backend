@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import multer from 'multer'
-import { listPhotos, uploadPhoto, deletePhoto, bulkDeletePhotos, getSelectedPhotos, downloadSelectedNames } from '../controllers/photo.controller.js'
+import { listPhotos, listPhotosByShareId, uploadPhoto, deletePhoto, bulkDeletePhotos, getSelectedPhotos, downloadSelectedNames } from '../controllers/photo.controller.js'
 import { requireAuth } from '../middleware/auth.js'
 import { asyncHandler } from '../middleware/errorHandler.js'
 
@@ -16,6 +16,7 @@ const upload = multer({
   },
 })
 
+router.get( '/projects/share/:shareId/photos',       asyncHandler(listPhotosByShareId))   // public
 router.get( '/projects/:projectId/photos',          requireAuth, asyncHandler(listPhotos))
 router.get( '/projects/:projectId/photos/selected',  requireAuth, asyncHandler(getSelectedPhotos))
 router.get( '/projects/:projectId/photos/selected/download', requireAuth, asyncHandler(downloadSelectedNames))

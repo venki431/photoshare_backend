@@ -135,6 +135,13 @@ export async function bulkDeletePhotos(ids, userId, deleteImagesFn) {
   return { data: { deletedCount: photos.length } }
 }
 
+export async function listPhotosByShareId(shareId, { page = 1, perPage = 10 }) {
+  const project = await projectRepo.findByShareId(shareId)
+  if (!project) return { error: 'Gallery not found', status: 404 }
+
+  return listPhotos(project.id, { page, perPage })
+}
+
 export async function getSelectedPhotoNames(projectId, userId) {
   const project = await projectRepo.findById(projectId, userId)
   if (!project) return { error: 'Project not found', status: 404 }
