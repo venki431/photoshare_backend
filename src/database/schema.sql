@@ -53,11 +53,14 @@ CREATE TABLE IF NOT EXISTS folders (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name        TEXT NOT NULL,
   user_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  share_id    TEXT UNIQUE,
+  shared_at   TIMESTAMPTZ,
   created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE INDEX IF NOT EXISTS idx_folders_user ON folders(user_id);
+CREATE INDEX IF NOT EXISTS idx_folders_share ON folders(share_id) WHERE share_id IS NOT NULL;
 
 CREATE TRIGGER trg_folders_updated_at
   BEFORE UPDATE ON folders

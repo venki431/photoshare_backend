@@ -66,6 +66,19 @@ export async function countByUserId(userId) {
   return rows[0].total
 }
 
+export async function findByShareId(shareId) {
+  const { rows } = await query(
+    `SELECT f.*,
+            COUNT(p.id)::int AS project_count
+     FROM folders f
+     LEFT JOIN projects p ON p.folder_id = f.id
+     WHERE f.share_id = $1
+     GROUP BY f.id`,
+    [shareId]
+  )
+  return rows[0] || null
+}
+
 export async function findOrCreateDefault(userId) {
   // Look for an existing "Default Folder" for this user
   const { rows } = await query(

@@ -6,12 +6,16 @@ import * as folderRepo from '../repositories/folder.repository.js'
 import * as projectRepo from '../repositories/project.repository.js'
 import * as photoRepo from '../repositories/photo.repository.js'
 
+import crypto from 'crypto'
+
 function formatFolder(row) {
   return {
     id:           row.id,
     name:         row.name,
     userId:       row.user_id,
     projectCount: row.project_count ?? 0,
+    shareId:      row.share_id ?? null,
+    sharedAt:     row.shared_at ?? null,
     createdAt:    row.created_at,
     updatedAt:    row.updated_at,
   }
@@ -76,6 +80,60 @@ export async function deleteFolder(id, userId, deleteImagesFn) {
   // Cascade delete will remove projects too
   await folderRepo.deleteById(id)
   return { data: null }
+}
+
+export async function shareFolder(id, userId) {
+  const existing = await folderRepo.findById(id, userId)
+  if (!existing) return { error: 'Folder not found', status: 404 }
+
+  if (existing.share_id) {
+    return { data: formatFolder(existing) }
+  }
+
+  const shareId = 'folder_' + crypto.randomBytes(8).toString('hex')
+  const updated = await folderRepo.update(id, {
+    share_id: shareId,
+    shared_at: new Date().toISOString(),
+  })
+  updated.project_count = existing.project_count ?? 0
+  return { data: formatFolder(updated) }
+}
+
+export async function unshareFolder(id, userId) {
+  const existing = await folderRepo.findById(id, userId)
+  if (!existing) return { error: 'Folder not found', status: 404 }
+
+  const updated = await folderRepo.update(id, {
+    share_id: null,
+    shared_at: null,
+  })
+  updated.project_count = existing.project_count ?? 0
+  return { data: formatFolder(updated) }
+}
+
+export async function getFolderByShareId(shareId) {
+  const row = await folderRepo.findByShareId(shareId)
+  if (!row) return { error: 'Shared folder not found', status: 404 }
+
+  const projects = await projectRepo.findAllByFolderId(row.id)
+  const formattedProjects = projects.map(p => ({
+    id:            p.id,
+    name:          p.name,
+    eventType:     p.event_type,
+    status:        p.status,
+    imageCount:    p.image_count,
+    selectedCount: p.selected_count,
+    shareId:       p.share_id,
+    coverUrl:      p.cover_url,
+    createdAt:     p.created_at,
+  }))
+
+  return {
+    data: {
+      ...formatFolder(row),
+      projects: formattedProjects,
+    },
+  }
 }
 
 export async function getOrCreateDefaultFolder(userId) {
