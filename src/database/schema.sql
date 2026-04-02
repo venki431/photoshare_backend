@@ -1,9 +1,11 @@
 -- PhotoShare Database Schema — PostgreSQL
 -- Run this against your PostgreSQL database to create tables.
 
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+
 -- ─── Users ────────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS users (
-  id                    TEXT PRIMARY KEY,
+  id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   email                 TEXT UNIQUE NOT NULL,
   name                  TEXT NOT NULL DEFAULT 'Photographer',
   role                  TEXT NOT NULL DEFAULT 'photographer',
@@ -36,7 +38,7 @@ CREATE TRIGGER trg_users_updated_at
 
 -- ─── OTP codes (short-lived, single-use) ─────────────────────────────────────
 CREATE TABLE IF NOT EXISTS otp_codes (
-  id          TEXT PRIMARY KEY,
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   email       TEXT NOT NULL,
   code        TEXT NOT NULL,
   expires_at  TIMESTAMPTZ NOT NULL,
@@ -46,10 +48,27 @@ CREATE TABLE IF NOT EXISTS otp_codes (
 
 CREATE INDEX IF NOT EXISTS idx_otp_email ON otp_codes(email);
 
+-- ─── Folders ──────────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS folders (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name        TEXT NOT NULL,
+  user_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_folders_user ON folders(user_id);
+
+CREATE TRIGGER trg_folders_updated_at
+  BEFORE UPDATE ON folders
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+
 -- ─── Projects ─────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS projects (
-  id               TEXT PRIMARY KEY,
-  user_id          TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id          UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  folder_id        UUID NOT NULL REFERENCES folders(id) ON DELETE CASCADE,
   name             TEXT NOT NULL,
   event_type       TEXT NOT NULL,
   status           TEXT NOT NULL DEFAULT 'pending',
@@ -68,13 +87,14 @@ CREATE TABLE IF NOT EXISTS projects (
 );
 
 CREATE INDEX IF NOT EXISTS idx_projects_user   ON projects(user_id);
+CREATE INDEX IF NOT EXISTS idx_projects_folder ON projects(folder_id);
 CREATE INDEX IF NOT EXISTS idx_projects_share  ON projects(share_id);
 CREATE INDEX IF NOT EXISTS idx_projects_status ON projects(status);
 
 -- ─── Photos ───────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS photos (
-  id             TEXT PRIMARY KEY,
-  project_id     TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  project_id     UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
   filename       TEXT NOT NULL,
   cloudinary_id  TEXT,
   url            TEXT NOT NULL,
@@ -84,6 +104,14 @@ CREATE TABLE IF NOT EXISTS photos (
   size           INTEGER,
   taken_at            TIMESTAMPTZ,
   selected_by_client  BOOLEAN NOT NULL DEFAULT false,
+  original_file_name    TEXT,
+  compressed_file_name  TEXT,
+  storage_url           TEXT,
+  thumbnail_url         TEXT,
+  file_size_original    INTEGER,
+  file_size_compressed  INTEGER,
+  mime_type             TEXT,
+  upload_status         TEXT DEFAULT 'completed',
   created_at          TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
@@ -93,9 +121,9 @@ CREATE INDEX IF NOT EXISTS idx_photos_selected ON photos(project_id, selected_by
 
 -- ─── Selections ───────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS selections (
-  id           TEXT PRIMARY KEY,
+  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   share_id     TEXT NOT NULL UNIQUE,
-  project_id   TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  project_id   UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
   status       TEXT NOT NULL DEFAULT 'draft',
   submitted_at TIMESTAMPTZ,
   created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -103,27 +131,27 @@ CREATE TABLE IF NOT EXISTS selections (
 
 -- ─── RPC functions for atomic counter updates ────────────────────────────────
 
-CREATE OR REPLACE FUNCTION increment_image_count(project_id_input TEXT)
+CREATE OR REPLACE FUNCTION increment_image_count(project_id_input UUID)
 RETURNS void AS $$
   UPDATE projects SET image_count = image_count + 1 WHERE id = project_id_input;
 $$ LANGUAGE sql;
 
-CREATE OR REPLACE FUNCTION decrement_image_count(project_id_input TEXT)
+CREATE OR REPLACE FUNCTION decrement_image_count(project_id_input UUID)
 RETURNS void AS $$
   UPDATE projects SET image_count = GREATEST(0, image_count - 1) WHERE id = project_id_input;
 $$ LANGUAGE sql;
 
-CREATE OR REPLACE FUNCTION decrement_image_count_by(project_id_input TEXT, amount INTEGER)
+CREATE OR REPLACE FUNCTION decrement_image_count_by(project_id_input UUID, amount INTEGER)
 RETURNS void AS $$
   UPDATE projects SET image_count = GREATEST(0, image_count - amount) WHERE id = project_id_input;
 $$ LANGUAGE sql;
 
-CREATE OR REPLACE FUNCTION increment_selected_count(project_id_input TEXT)
+CREATE OR REPLACE FUNCTION increment_selected_count(project_id_input UUID)
 RETURNS void AS $$
   UPDATE projects SET selected_count = selected_count + 1 WHERE id = project_id_input;
 $$ LANGUAGE sql;
 
-CREATE OR REPLACE FUNCTION decrement_selected_count(project_id_input TEXT)
+CREATE OR REPLACE FUNCTION decrement_selected_count(project_id_input UUID)
 RETURNS void AS $$
   UPDATE projects SET selected_count = GREATEST(0, selected_count - 1) WHERE id = project_id_input;
 $$ LANGUAGE sql;

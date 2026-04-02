@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { listProjects, getProject, getProjectByShareId, createProject, updateProject, deleteProject } from '../controllers/project.controller.js'
+import { listProjects, listProjectsByFolder, getProject, getProjectByShareId, createProject, updateProject, deleteProject } from '../controllers/project.controller.js'
 import { requireAuth } from '../middleware/auth.js'
 import { asyncHandler } from '../middleware/errorHandler.js'
 
@@ -10,6 +10,7 @@ router.get('/share/:shareId', asyncHandler(getProjectByShareId))
 
 // Protected
 router.get('/',    requireAuth, asyncHandler(listProjects))
+router.get('/folder/:folderId', requireAuth, asyncHandler(listProjectsByFolder))
 router.post('/',   requireAuth, asyncHandler(createProject))
 router.get('/:id', requireAuth, asyncHandler(getProject))
 router.put('/:id', requireAuth, asyncHandler(updateProject))

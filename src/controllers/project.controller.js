@@ -22,6 +22,13 @@ export async function listProjects(req, res) {
   return R.success(res, result.data, 'Projects fetched successfully', { meta: result.meta })
 }
 
+export async function listProjectsByFolder(req, res) {
+  const { page, perPage, status, search } = req.query
+  const result = await projectService.listProjectsByFolder(req.params.folderId, req.user.id, { page, perPage, status, search })
+  if (result.error) return R.notFound(res, result.error)
+  return R.success(res, result.data, 'Projects fetched successfully', { meta: result.meta })
+}
+
 export async function getProject(req, res) {
   const result = await projectService.getProject(req.params.id, req.user.id)
   if (result.error) return R.notFound(res, result.error)

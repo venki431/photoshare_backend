@@ -18,6 +18,7 @@ import projectRoutes from './src/routes/project.routes.js'
 import photoRoutes from './src/routes/photo.routes.js'
 import selectionRoutes from './src/routes/selection.routes.js'
 import uploadRoutes from './src/routes/upload.routes.js'
+import folderRoutes from './src/routes/folder.routes.js'
 
 // ─── App ─────────────────────────────────────────────────────────────────────
 const app  = express()
@@ -39,6 +40,7 @@ app.get('/health', (_req, res) => {
 
 // ─── API routes ──────────────────────────────────────────────────────────────
 app.use('/v1/auth',        authRoutes)
+app.use('/v1/folders',     folderRoutes)
 app.use('/v1/projects',    projectRoutes)
 app.use('/v1',             photoRoutes)
 app.use('/v1/selections',  selectionRoutes)

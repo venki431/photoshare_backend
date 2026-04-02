@@ -55,6 +55,57 @@ export async function findById(id, userId) {
   return rows[0] || null
 }
 
+export async function findAllByFolderId(folderId, { status, search, limit, offset } = {}) {
+  let text = 'SELECT * FROM projects WHERE folder_id = $1'
+  const params = [folderId]
+  let idx = 2
+
+  if (status && status !== 'all') {
+    text += ` AND status = $${idx++}`
+    params.push(status)
+  }
+
+  if (search) {
+    text += ` AND (name ILIKE $${idx} OR event_type ILIKE $${idx})`
+    params.push(`%${search}%`)
+    idx++
+  }
+
+  text += ' ORDER BY created_at DESC'
+
+  if (limit !== undefined) {
+    text += ` LIMIT $${idx++}`
+    params.push(limit)
+  }
+  if (offset !== undefined) {
+    text += ` OFFSET $${idx++}`
+    params.push(offset)
+  }
+
+  const { rows } = await query(text, params)
+  return rows
+}
+
+export async function countByFolderId(folderId, { status, search } = {}) {
+  let text = 'SELECT COUNT(*)::int AS total FROM projects WHERE folder_id = $1'
+  const params = [folderId]
+  let idx = 2
+
+  if (status && status !== 'all') {
+    text += ` AND status = $${idx++}`
+    params.push(status)
+  }
+
+  if (search) {
+    text += ` AND (name ILIKE $${idx} OR event_type ILIKE $${idx})`
+    params.push(`%${search}%`)
+    idx++
+  }
+
+  const { rows } = await query(text, params)
+  return rows[0].total
+}
+
 export async function findByShareId(shareId) {
   const { rows } = await query('SELECT * FROM projects WHERE share_id = $1', [shareId])
   return rows[0] || null
